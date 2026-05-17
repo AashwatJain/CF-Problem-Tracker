@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "CF Problem Tracker",
+  "version": "1.0.0",
+  "description": "Shows how many Codeforces problems you solved in the last X days — right on your profile page",
+  "permissions": ["storage"],
+  "host_permissions": ["https://codeforces.com/*"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://codeforces.com/profile/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
