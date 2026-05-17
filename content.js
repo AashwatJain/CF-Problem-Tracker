@@ -52,6 +52,7 @@
   async function getSubs() {
     try {
       const s = await new Promise((res) => {
+        if (!chrome.storage) return res(null);
         chrome.storage.local.get(CACHE_KEY, (r) => {
           if (chrome.runtime.lastError) return res(null);
           res(r[CACHE_KEY] || null);
@@ -60,11 +61,30 @@
       if (s && s.data && Date.now() - s.ts < CACHE_TTL) return s.data;
     } catch (_) {}
 
-    const r = await fetchT(
-      `https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}&from=1&count=10000`
-    );
-    const j = await r.json();
-    if (j.status !== 'OK') throw new Error(j.comment || 'API error');
+    let r;
+    try {
+      r = await fetchT(
+        `https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}&from=1&count=10000`
+      );
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Request timed out. Codeforces might be slow.');
+      throw new Error('Network error. Please check your connection.');
+    }
+
+    let j;
+    try {
+      j = await r.json();
+    } catch (e) {
+      throw new Error('Invalid response from API. The site might be down or under maintenance.');
+    }
+
+    if (j.status !== 'OK') {
+      throw new Error(j.comment || 'API returned an error.');
+    }
+
+    if (!Array.isArray(j.result)) {
+      throw new Error('Unexpected data format received from API.');
+    }
 
     try { chrome.storage.local.set({ [CACHE_KEY]: { data: j.result, ts: Date.now() } }); } catch (_) {}
     return j.result;
@@ -275,6 +295,7 @@
       if (d.rd['Unrated']) allRatingsList.push('Unrated');
 
       const maxGlobalRatingCount = allRatingsList.length > 0 ? Math.max(...allRatingsList.map(r => d.rd[r])) : 1;
+      const globalSortedTags = Object.keys(d.tags).sort((a, b) => d.tags[b] - d.tags[a]);
 
       function renderRatings(rdData) {
         rtBox.innerHTML = '';
@@ -336,7 +357,6 @@
             if (activeTags.has(tag)) row.classList.add('cfpt-tag-active');
 
             const pct = (count / maxT) * 100;
-            const globalSortedTags = Object.keys(d.tags).sort((a, b) => d.tags[b] - d.tags[a]);
             let cIdx = globalSortedTags.indexOf(tag);
             if (cIdx === -1) cIdx = 0;
             const color = getTagColor(cIdx);
