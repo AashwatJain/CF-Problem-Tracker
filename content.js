@@ -31,6 +31,17 @@
     return '#ff7777'; // Red
   }
 
+  function getTextRatingColor(r) {
+    if (!r || r === 'Unrated') return '#808080';
+    if (r < 1200) return '#808080'; // Gray
+    if (r < 1400) return '#008000'; // Green
+    if (r < 1600) return '#03a89e'; // Cyan
+    if (r < 1900) return '#0000ff'; // Blue
+    if (r < 2100) return '#aa00aa'; // Violet
+    if (r < 2400) return '#ff8c00'; // Orange
+    return '#ff0000'; // Red
+  }
+
   /* ── Tag colors ─────────────────────────────── */
   const TAG_COLORS = [
     '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899',
@@ -247,9 +258,16 @@
       const stats = document.createElement('div');
       stats.className = 'cfpt-stats';
 
+      // Calculate average rating (excluding unrated problems)
+      const ratedEntries = Object.entries(d.rd).filter(([k]) => k !== 'Unrated');
+      const ratedCount = ratedEntries.reduce((sum, [, cnt]) => sum + cnt, 0);
+      const ratedSum = ratedEntries.reduce((sum, [r, cnt]) => sum + Number(r) * cnt, 0);
+      const avgRating = ratedCount > 0 ? Math.round(ratedSum / ratedCount) : 0;
+
       const sData = [
         { v: d.total, l: 'Submissions', c: '#6366f1' },
         { v: (d.solved / Math.max(days, 1)).toFixed(1), l: 'Per Day', c: '#f59e0b' },
+        { v: avgRating || '—', l: `Avg Rating (${ratedCount})`, c: getTextRatingColor(avgRating) },
       ];
       sData.forEach((s) => {
         const card = document.createElement('div');
@@ -447,8 +465,21 @@
      INIT
      ══════════════════════════════════════════════ */
   async function init() {
+    // Bail out if CF is showing an error/maintenance page instead of the actual profile.
+    // Real profile pages always have a .userbox element or at least a .main-info inside #pageContent.
+    const pageContent = document.getElementById('pageContent');
+    const isRealProfile = pageContent && (
+      pageContent.querySelector('.userbox') ||
+      pageContent.querySelector('.info') ||
+      pageContent.querySelector('[class*="userRank"]')
+    );
+    if (!isRealProfile) {
+      console.log('[CF Problem Tracker] Profile page not detected (CF may be down). Skipping widget injection.');
+      return;
+    }
+
     // Find the center column. Usually it's .content-with-sidebar inside #pageContent.
-    let target = document.querySelector('.content-with-sidebar') || document.getElementById('pageContent') || document.body;
+    let target = document.querySelector('.content-with-sidebar') || pageContent || document.body;
 
     const ph = document.createElement('div');
     ph.id = 'cfpt-widget';
