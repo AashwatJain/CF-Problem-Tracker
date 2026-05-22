@@ -60,6 +60,22 @@
       .catch((e) => { clearTimeout(t); throw e; });
   }
 
+  async function fetchWithRetry(url, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const r = await fetchT(url);
+        if (r.status === 429) throw new Error('Codeforces API rate limit exceeded. Please wait a moment.');
+        if (r.status >= 500) throw new Error(`Codeforces server error (${r.status}). They might be under heavy load.`);
+        if (!r.ok) throw new Error(`HTTP Error ${r.status}`);
+        return r;
+      } catch (e) {
+        if (i === retries - 1) throw e;
+        // Exponential backoff: wait 1s, 2s, then 4s
+        await new Promise(res => setTimeout(res, 1000 * Math.pow(2, i)));
+      }
+    }
+  }
+
   async function getSubs() {
     try {
       const s = await new Promise((res) => {
@@ -74,23 +90,23 @@
 
     let r;
     try {
-      r = await fetchT(
+      r = await fetchWithRetry(
         `https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}&from=1&count=10000`
       );
     } catch (e) {
       if (e.name === 'AbortError') throw new Error('Request timed out. Codeforces might be slow.');
-      throw new Error('Network error. Please check your connection.');
+      throw new Error(e.message || 'Network error. Please check your connection.');
     }
 
     let j;
     try {
       j = await r.json();
     } catch (e) {
-      throw new Error('Invalid response from API. The site might be down or under maintenance.');
+      throw new Error('Invalid JSON response from API. Codeforces might be down or under maintenance.');
     }
 
     if (j.status !== 'OK') {
-      throw new Error(j.comment || 'API returned an error.');
+      throw new Error(j.comment || 'Codeforces API returned an error.');
     }
 
     if (!Array.isArray(j.result)) {
@@ -309,15 +325,25 @@
       const activeRatings = new Set();
       const activeTags = new Set();
 
-      const allRatingsList = Object.keys(d.rd).filter(k => k !== 'Unrated').map(Number).sort((a, b) => a - b);
-      if (d.rd['Unrated']) allRatingsList.push('Unrated');
+      const allRatingsList = [];
+      for (let r = 800; r <= 3500; r += 100) {
+        allRatingsList.push(r);
+      }
+      Object.keys(d.rd).filter(k => k !== 'Unrated').map(Number).forEach(r => {
+        if (!allRatingsList.includes(r)) allRatingsList.push(r);
+      });
+      allRatingsList.sort((a, b) => a - b);
+      allRatingsList.push('Unrated');
 
-      const maxGlobalRatingCount = allRatingsList.length > 0 ? Math.max(...allRatingsList.map(r => d.rd[r])) : 1;
+      const maxGlobalRatingCount = allRatingsList.length > 0 ? Math.max(...allRatingsList.map(r => d.rd[r] || 0)) : 1;
       const globalSortedTags = Object.keys(d.tags).sort((a, b) => d.tags[b] - d.tags[a]);
 
       function renderRatings(rdData) {
         rtBox.innerHTML = '';
         let hasAny = false;
+
+        let maxCount = -1;
+        let maxColNode = null;
 
         allRatingsList.forEach((rating) => {
           const count = rdData[rating] || 0;
@@ -346,6 +372,11 @@
           });
 
           rtBox.appendChild(col);
+
+          if (count > maxCount) {
+            maxCount = count;
+            maxColNode = col;
+          }
         });
 
         if (!hasAny) {
@@ -357,6 +388,15 @@
           rtTitle.innerHTML = `<span>🏆</span> Ratings <span style="font-weight:400;color:#9ca3af">(${totalInTags} problems)</span>`;
         } else {
           rtTitle.innerHTML = `<span>🏆</span> Rating Breakdown`;
+        }
+
+        if (maxColNode && maxCount > 0 && activeTags.size === 0 && activeRatings.size === 0) {
+          requestAnimationFrame(() => {
+            const containerWidth = rtBox.clientWidth;
+            const colLeft = maxColNode.offsetLeft;
+            const colWidth = maxColNode.offsetWidth;
+            rtBox.scrollLeft = colLeft - (containerWidth / 2) + (colWidth / 2);
+          });
         }
       }
 
@@ -503,15 +543,31 @@
     // Append at the bottom of the main content area
     target.appendChild(ph);
 
-    try {
-      const subs = await getSubs();
-      ph.replaceWith(build(subs));
-    } catch (err) {
-      console.error('[CF Problem Tracker]', err);
-      ph.querySelector('.cfpt-body').innerHTML = `
-        <div class="cfpt-error">⚠️ ${err.message}</div>
+    async function loadData(container) {
+      container.querySelector('.cfpt-body').innerHTML = `
+        <div class="cfpt-loading">
+          <div class="cfpt-spinner"></div>
+          <span>Loading submissions…</span>
+        </div>
       `;
+      try {
+        const subs = await getSubs();
+        container.replaceWith(build(subs));
+      } catch (err) {
+        console.error('[CF Problem Tracker]', err);
+        container.querySelector('.cfpt-body').innerHTML = `
+          <div class="cfpt-error">
+            <span style="flex:1">⚠️ ${err.message}</span>
+            <button class="cfpt-retry-btn">Retry</button>
+          </div>
+        `;
+        container.querySelector('.cfpt-retry-btn').addEventListener('click', () => {
+          loadData(container);
+        });
+      }
     }
+
+    loadData(ph);
   }
 
   init();

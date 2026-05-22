@@ -216,13 +216,32 @@
 .cfpt-ratings {
   display: flex;
   align-items: flex-end;
-  justify-content: space-around;
-  height: 200px;
+  gap: 2px;
+  height: 220px;
   background: #fafafa;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  padding: 16px 8px 8px 8px;
+  padding: 16px 12px 8px 12px;
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  position: relative;
+}
+
+/* custom horizontal scrollbar for ratings */
+.cfpt-ratings::-webkit-scrollbar {
+  height: 5px;
+}
+.cfpt-ratings::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cfpt-ratings::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 10px;
+}
+.cfpt-ratings::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
 
 .cfpt-rt-col {
@@ -231,8 +250,8 @@
   align-items: center;
   justify-content: flex-end;
   height: 100%;
-  flex: 1;
-  max-width: 45px;
+  flex: 0 0 40px;
+  min-width: 40px;
 }
 
 .cfpt-rt-count {
@@ -468,4 +487,20 @@
   padding: 24px;
   color: #9ca3af;
   font-size: 13px;
+}
+
+.cfpt-retry-btn {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cfpt-retry-btn:hover {
+  background: #fecaca;
 }
