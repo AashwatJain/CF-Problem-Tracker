@@ -12,7 +12,7 @@
 
 ## ✨ Features
 
-- **📊 Comprehensive Dashboard:** Instantly view your total solved problems, total submissions, and average problems solved per day.
+- **📊 Comprehensive Dashboard:** Instantly view your total solved problems, total submissions, average problems solved per day, and **average rating** of your solved problems.
 - **📅 Custom Date Ranges:** Analyze your performance over any specific period (e.g., last 30 days, 1 year).
 - **📈 Rating Breakdown:** Beautiful interactive bar charts showing the difficulty levels of problems you've solved.
 - **🏷️ Tag Analytics:** Discover your most practiced topics with detailed tag frequency bars and dynamic gradients.
@@ -20,6 +20,7 @@
   - Click on any **Tag** to instantly see the rating distribution for that specific topic.
   - Click on any **Rating** to see exactly which tags you solved at that difficulty.
   - *Supports Multi-selection & Click-outside to reset!*
+- **🛡️ Robust Reliability:** Graceful handling of Codeforces downtime or API errors to ensure a clean browser experience without broken UI elements.
 - **🎨 Premium UI:** Smooth micro-animations, custom tooltips, glassmorphic elements, and a sleek modern design.
 
 ---
